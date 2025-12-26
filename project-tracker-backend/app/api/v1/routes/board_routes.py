@@ -1,0 +1,87 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from app.database.database import get_db
+from app.models.board import Board
+from app.models.board_project_mapping import BoardProjectMapping
+from app.schemas.board_schemas import BoardCreate
+
+router = APIRouter(
+    prefix="/api/v1/board",
+    tags=["Board"]
+)
+
+# ---------------- CREATE BOARD ----------------
+@router.post("/")
+def create_board(board: BoardCreate, db: Session = Depends(get_db)):
+
+    new_board = Board(
+        board_title=board.board_title,
+        sprint_start_date=board.sprint_start_date,
+        sprint_end_date=board.sprint_end_date,
+        board_short_description=board.board_short_description
+    )
+
+    db.add(new_board)
+    db.commit()
+    db.refresh(new_board)
+
+    mapping = BoardProjectMapping(
+        board_id=new_board.board_id,
+        project_id=board.project_id
+    )
+
+    db.add(mapping)
+    db.commit()
+
+    return {
+        "message": "Board created successfully",
+        "board_id": new_board.board_id
+    }
+#board edit
+@router.post("/{id}")
+def edit_board(
+    id: int,
+    board: BoardCreate,
+    db: Session = Depends(get_db)
+):
+    db_board = db.query(Board).filter(Board.board_id == id).first()
+
+    if not db_board:
+        raise HTTPException(status_code=404, detail="Board not found")
+
+    db_board.board_title = board.board_title
+    db_board.sprint_start_date = board.sprint_start_date
+    db_board.sprint_end_date = board.sprint_end_date
+    db_board.board_short_description = board.board_short_description
+
+    db.commit()
+
+    return {
+        "message": "Board updated successfully",
+        "board_id": id
+    }
+#delete board 
+@router.post("/delete/{id}")
+def delete_board(
+    id: int,
+    db: Session = Depends(get_db)
+):
+    board = db.query(Board).filter(Board.board_id == id).first()
+
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+
+    # delete mapping first (safe way)
+    db.query(BoardProjectMapping).filter(
+        BoardProjectMapping.board_id == id
+    ).delete()
+
+    db.delete(board)
+    db.commit()
+
+    return {
+        "message": "Board deleted successfully",
+        "board_id": id
+    }
+

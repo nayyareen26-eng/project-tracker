@@ -1,0 +1,42 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.database.database import engine, Base
+import app.models  #  REQUIRED – models register hote hain
+
+from app.api.v1.routes.project_routes import router as project_router
+from app.api.v1.routes.board_routes import router as board_router
+from app.api.v1.routes.task_routes import router as task_router
+from app.api.v1.routes.user_routes import router as user_router
+from app.api.v1.routes.auth_routes import router as auth_router
+from app.api.v1.routes.department_routes import router as department_router
+from app.api.v1.routes.role_routes import router as role_router
+from app.api.v1.routes.project_member_routes import router as project_member_router
+
+app = FastAPI(title="Project Tracker API")
+
+# DEV ONLY – create tables
+Base.metadata.create_all(bind=engine)
+
+#CORS fix for frontend error
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/")
+def root():
+    return {"message": "Project Tracker Backend Running"}
+
+# include all routers
+app.include_router(project_router)
+app.include_router(board_router)
+app.include_router(task_router)
+app.include_router(user_router)
+app.include_router(auth_router)
+app.include_router(department_router)
+app.include_router(role_router)
+app.include_router(project_member_router)
